@@ -1,0 +1,201 @@
+#!/usr/bin/env bash
+# The ladder runner.
+#
+#   ./learn                     show this help
+#   ./learn list                every step, with what is passing
+#   ./learn next                run the first unfinished item
+#   ./learn run  <id>           run one item
+#   ./learn hint <id>           the NEXT hint tier (they are graded)
+#   ./learn hint <id> all       every tier at once
+#   ./learn solution <id>       the solution, where one ships
+#   ./learn test                run absolutely everything
+#
+# ids are <step>/<item>, and the step may be just its number:
+#   02/01_cursor    2/01_cursor    02/project    14/project
+set -uo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROGRESS="$ROOT/.learn-progress"
+touch "$PROGRESS" 2>/dev/null || true
+
+if [ -t 1 ]; then
+  B=$'\033[1m'; D=$'\033[2m'; G=$'\033[32m'; Y=$'\033[33m'; R=$'\033[31m'; C=$'\033[36m'; N=$'\033[0m'
+else B=""; D=""; G=""; Y=""; R=""; C=""; N=""; fi
+have() { command -v "$1" >/dev/null 2>&1; }
+
+steps() { ls "$ROOT/steps" 2>/dev/null | sort; }
+
+# resolve "2" or "02-parsing" to the full directory name
+resolve_step() {
+  local want="$1" s
+  for s in $(steps); do
+    [ "$s" = "$want" ] && { echo "$s"; return 0; }
+    [ "${s%%-*}" = "$want" ] && { echo "$s"; return 0; }
+    [ "${s%%-*}" = "0$want" ] && { echo "$s"; return 0; }
+  done
+  return 1
+}
+
+# canonical id: zero-padded step number + item, so "2/x" and "02/x" are one key
+canon() {
+  local num="${1%%/*}" item="${1#*/}" s
+  s="$(resolve_step "$num")" || { echo "$1"; return 1; }
+  echo "${s%%-*}/$item"
+}
+
+items_of() { # every item id inside a step, in order
+  local s="$1" d="$ROOT/steps/$1" f
+  if compgen -G "$d/exercises/*.test.ts" >/dev/null; then
+    for f in "$d"/exercises/*.test.ts; do echo "${s%%-*}/$(basename "$f" .test.ts)"; done
+  fi
+  if [ -f "$d/go.mod" ] && compgen -G "$d/exercises/*/" >/dev/null; then
+    for f in "$d"/exercises/*/; do echo "${s%%-*}/$(basename "$f")"; done
+  fi
+  if [ -d "$d/project" ]; then echo "${s%%-*}/project"; fi
+}
+
+all_ids() { local s; for s in $(steps); do items_of "$s"; done; }
+
+# run_item <id> <loud|quiet> -> 0 passing, 1 not yet, 2 nothing runnable
+run_item() {
+  local id="$1" v="${2:-quiet}" num="${1%%/*}" item="${1#*/}" s d
+  s="$(resolve_step "$num")" || { echo "unknown step: $num" >&2; return 2; }
+  d="$ROOT/steps/$s"
+
+  if [ "$item" = project ]; then
+    local p="$d/project"
+    if [ -f "$p/go.mod" ]; then
+      have go || return 2
+      if [ "$v" = loud ]; then (cd "$p" && go test -race ./...); else (cd "$p" && go test ./... >/dev/null 2>&1); fi
+    elif compgen -G "$p/test/*.test.ts" >/dev/null; then
+      have node || return 2
+      if [ "$v" = loud ]; then (cd "$p" && node --experimental-strip-types --test test/*.test.ts)
+      else (cd "$p" && node --experimental-strip-types --test test/*.test.ts >/dev/null 2>&1); fi
+    else return 2; fi
+    return $?
+  fi
+
+  if [ -f "$d/exercises/$item.test.ts" ]; then
+    have node || return 2
+    if [ "$v" = loud ]; then (cd "$d/exercises" && node --experimental-strip-types --test "$item.test.ts")
+    else (cd "$d/exercises" && node --experimental-strip-types --test "$item.test.ts" >/dev/null 2>&1); fi
+    return $?
+  fi
+
+  if [ -d "$d/exercises/$item" ]; then
+    have go || return 2
+    if [ "$v" = loud ]; then (cd "$d" && go test -race "./exercises/$item/")
+    else (cd "$d" && go test "./exercises/$item/" >/dev/null 2>&1); fi
+    return $?
+  fi
+  echo "unknown item: $id" >&2; return 2
+}
+
+status_of() { run_item "$1" quiet; case $? in 0) echo done;; 2) echo manual;; *) echo todo;; esac; }
+
+hint_file() {
+  local num="${1%%/*}" item="${1#*/}" s; s="$(resolve_step "$num")" || return 1
+  if [ "$item" = project ]; then echo "$ROOT/steps/$s/project/HINTS.md"
+  else echo "$ROOT/steps/$s/hints/$item.md"; fi
+}
+solution_path() {
+  local num="${1%%/*}" item="${1#*/}" s; s="$(resolve_step "$num")" || return 1
+  [ "$item" = project ] && return 1
+  local d="$ROOT/steps/$s/solutions"
+  [ -f "$d/$item.ts" ] && { echo "$d/$item.ts"; return 0; }
+  [ -d "$d/$item" ] && { echo "$d/$item"; return 0; }
+  return 1
+}
+
+tier_count() { grep -c '^## ' "$1" 2>/dev/null || echo 0; }
+show_tier() { awk -v want="$2" '/^## /{n++; if(n==want){show=1;print;next} else show=0} show{print}' "$1"; }
+
+cmd_hint() {
+  local id mode="${2:-next}" f total cur nextt
+  id="$(canon "$1")"
+  f="$(hint_file "$id")" || { echo "${Y}unknown id: $id${N}"; return 1; }
+  [ -f "$f" ] || { echo "${Y}no hints for $id${N}"; return 1; }
+  total="$(tier_count "$f")"
+  [ "$mode" = all ] && { cat "$f"; return 0; }
+
+  cur="$(grep "^$id " "$PROGRESS" 2>/dev/null | tail -1 | awk '{print $2}')"; cur="${cur:-0}"
+  nextt=$((cur + 1))
+  if [ "$nextt" -gt "$total" ]; then
+    echo "${Y}That was the last tier for $id.${N}"
+    echo "${D}./learn hint $id all${N}"
+    solution_path "$id" >/dev/null 2>&1 && echo "${D}./learn solution $id${N}"
+    return 0
+  fi
+  echo "${C}${B}$id — hint $nextt of $total${N}"; echo
+  show_tier "$f" "$nextt"; echo
+  { grep -v "^$id " "$PROGRESS" 2>/dev/null; echo "$id $nextt"; } > "$PROGRESS.tmp" && mv "$PROGRESS.tmp" "$PROGRESS"
+  [ "$nextt" -lt "$total" ] && echo "${D}still stuck? ./learn hint $id${N}"
+}
+
+cmd_list() {
+  local s num ndone=0 ntotal=0 id st
+  for s in $(steps); do
+    num="${s%%-*}"
+    local title="${s#*-}"
+    printf "\n${B}%s  %s${N}\n" "$num" "$(echo "$title" | tr '-' ' ')"
+    while read -r id; do
+      [ -z "$id" ] && continue
+      st="$(status_of "$id")"
+      case "$st" in
+        done) printf "   ${G}done${N}    %s\n" "$id"; ndone=$((ndone+1)); ntotal=$((ntotal+1));;
+        todo) printf "   ${Y}todo${N}    %s\n" "$id"; ntotal=$((ntotal+1));;
+        manual) printf "   ${D}manual  %s${N}\n" "$id";;
+      esac
+    done < <(items_of "$s")
+  done
+  printf "\n${B}%s / %s${N} automated items passing\n" "$ndone" "$ntotal"
+}
+
+cmd_next() {
+  local id
+  while read -r id; do
+    [ -z "$id" ] && continue
+    if [ "$(status_of "$id")" = todo ]; then
+      echo "${C}${B}$id${N}"; echo
+      run_item "$id" loud; local rc=$?
+      echo; echo "${D}hints:    ./learn hint $id${N}"
+      solution_path "$id" >/dev/null 2>&1 && echo "${D}solution: ./learn solution $id${N}"
+      return $rc
+    fi
+  done < <(all_ids)
+  echo "${G}${B}Everything automated is passing.${N}"
+}
+
+cmd_solution() {
+  local p x
+  if ! p="$(solution_path "$1")"; then
+    echo "${Y}No full solution ships for $1."
+    echo "Exercises have one; projects do not — a project solution would just"
+    echo "be the finished thing. The last hint tier has the key code.${N}"
+    return 1
+  fi
+  if [ -d "$p" ]; then for x in "$p"/*; do echo "${D}--- $x${N}"; cat "$x"; done
+  else cat "$p"; fi
+}
+
+cmd_test() {
+  local id st fail=0
+  while read -r id; do
+    [ -z "$id" ] && continue
+    st="$(status_of "$id")"
+    case "$st" in
+      done) printf "${G}ok  ${N} %s\n" "$id";;
+      todo) printf "${R}FAIL${N} %s\n" "$id"; fail=1;;
+    esac
+  done < <(all_ids)
+  return $fail
+}
+
+case "${1:-help}" in
+  list|ls) cmd_list;;
+  next|n) cmd_next;;
+  run|r) [ $# -ge 2 ] || { echo "usage: ./learn run <id>"; exit 1; }; run_item "$(canon "$2")" loud;;
+  hint|h) [ $# -ge 2 ] || { echo "usage: ./learn hint <id> [all]"; exit 1; }; cmd_hint "$2" "${3:-next}";;
+  solution|s) [ $# -ge 2 ] || { echo "usage: ./learn solution <id>"; exit 1; }; cmd_solution "$(canon "$2")";;
+  test|t) cmd_test;;
+  *) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//';;
+esac

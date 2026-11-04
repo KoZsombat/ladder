@@ -1,0 +1,6 @@
+.learn-progress
+target/
+node_modules/
+*.bin
+/tmp/
+data.log
