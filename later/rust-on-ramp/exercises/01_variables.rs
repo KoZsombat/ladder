@@ -17,14 +17,14 @@
 ///   the best of any mainstream language and they usually tell you the fix
 ///   verbatim, including the exact text to insert.
 pub fn sum_to(n: u32) -> u32 {
-    let total = 0;
+    let mut total = 0;
     for i in 1..=n {
         total += i;
     }
     total
 }
 
-/// Returns the length of `s` as an i32.
+/// Returns the length of `s` as an i32. 
 ///
 /// TODO: make this compile.
 ///
@@ -36,7 +36,7 @@ pub fn sum_to(n: u32) -> u32 {
 ///   `i32::try_from(s.len()).unwrap_or(i32::MAX)`, and knowing the difference
 ///   is the point of this exercise.
 pub fn len_as_i32(s: &str) -> i32 {
-    s.len()
+    s.len() as i32
 }
 
 /// Returns the larger of two values, or `a` if they are equal.
@@ -49,7 +49,7 @@ pub fn len_as_i32(s: &str) -> i32 {
 ///   and you will get a type error about expecting i64 and finding ().
 ///   That error will happen to you at least once today; now you know why.
 pub fn max_of(a: i64, b: i64) -> i64 {
-    todo!()
+    if a >= b {a} else {b}
 }
 
 /// Shadowing: returns the input parsed as a number, doubled.
@@ -65,7 +65,10 @@ pub fn max_of(a: i64, b: i64) -> i64 {
 ///   the parameter, possibly with a different type. That is shadowing, and
 ///   it is not mutation: the old value still exists, it is just unreachable.
 pub fn parse_and_double(s: &str) -> i32 {
-    todo!()
+    match s.trim().parse::<i32>() {
+        Ok(n) => n * 2,
+        Err(_) => 0 
+    }
 }
 
 #[cfg(test)]

@@ -25,7 +25,7 @@
 ///   parameter itself to `mut s: String`. Taking the parameter by value
 ///   means this function OWNS it, so it is free to mutate it and hand it
 ///   back. That is a normal, idiomatic Rust signature.
-pub fn append_world(s: String) -> String {
+pub fn append_world(mut s: String) -> String {
     s.push_str(" world");
     s
 }
@@ -41,7 +41,7 @@ pub fn append_world(s: String) -> String {
 ///   Change the parameter to a BORROW: `&String`, or better `&str`, which
 ///   also accepts string literals and slices. "Accept the most general
 ///   borrowed form" is the Rust version of "accept interfaces".
-pub fn string_len(s: String) -> usize {
+pub fn string_len(s: &str) -> usize {
     s.len()
 }
 
@@ -57,7 +57,7 @@ pub fn string_len(s: String) -> usize {
 ///   never both. That single rule is what makes data races impossible at
 ///   compile time — and it is the same invariant you enforced by hand with a
 ///   Mutex in the Go track.
-pub fn count_after_push(v: Vec<i32>, x: i32) -> usize {
+pub fn count_after_push(v: &mut Vec<i32>, x: i32) -> usize {
     v.push(x);
     v.len()
 }
@@ -71,7 +71,10 @@ pub fn count_after_push(v: Vec<i32>, x: i32) -> usize {
 ///
 ///   Shape: `match (v.first(), v.last()) { (Some(a), Some(b)) => Some((*a, *b)), _ => None }`
 pub fn ends(v: &[i32]) -> Option<(i32, i32)> {
-    todo!()
+    match (v.first(), v.last()) {
+        (Some(a), Some(b)) => Some((*a, *b)),
+        _ => None
+    }
 }
 
 #[cfg(test)]
