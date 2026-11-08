@@ -29,7 +29,17 @@ export type Shape =
  *   bug this exercise exists to prevent.
  */
 export function area(s: Shape): number {
-  throw new Error("TODO: area");
+  switch (s.kind) {
+    case "circle": {
+      return Math.PI * s.r * s.r;
+    }
+    case "rect": {
+      return s.w * s.h;
+    }
+    case "point": {
+      return 0;
+    }
+  }
 }
 
 /**
@@ -48,7 +58,21 @@ export function area(s: Shape): number {
  *   will use it in the vending machine, the parser and the compiler.
  */
 export function name(s: Shape): string {
-  throw new Error("TODO: name");
+  switch (s.kind) {
+    case "circle": {
+      return "circle";
+    }
+    case "rect": {
+      return "rect";
+    }
+    case "point": {
+      return "point";
+    }
+    default: {
+      const _exhaustive: never = s;
+      throw new Error(`unhandled: ${JSON.stringify(_exhaustive)}`);
+    }
+  }
 }
 
 /**
@@ -60,5 +84,9 @@ export function name(s: Shape): string {
  *   there. Try reading `s.r` outside the if and see the error.
  */
 export function radius(s: Shape): number | undefined {
-  throw new Error("TODO: radius");
+  if (s.kind === "circle") {
+    return s.r;
+  } else {
+    return undefined;
+  }
 }
