@@ -15,10 +15,7 @@
 
 export type Door = "closed" | "open" | "locked";
 
-export type Ev =
-  | { kind: "push" }
-  | { kind: "pull" }
-  | { kind: "turnKey" };
+export type Ev = { kind: "push" } | { kind: "pull" } | { kind: "turnKey" };
 
 export type Fx =
   | { kind: "sound"; what: string }
@@ -44,7 +41,26 @@ export type Fx =
  *   combinations you did not think about are where the bugs live.
  */
 export function step(state: Door, e: Ev): [Door, Fx[]] {
-  throw new Error("TODO: step");
+  switch (e.kind) {
+    case "pull":
+      return state == "closed"
+        ? ["closed", [{ kind: "refuse", why: "already closed" }]]
+        : state == "locked"
+          ? ["locked", [{ kind: "refuse", why: "locked" }]]
+          : ["closed", [{ kind: "sound", what: "thud" }]];
+    case "push":
+      return state == "closed"
+        ? ["open", [{ kind: "sound", what: "creak" }]]
+        : state == "locked"
+          ? ["locked", [{ kind: "refuse", why: "locked" }]]
+          : ["open", [{ kind: "refuse", why: "already opened" }]];
+    case "turnKey":
+      return state == "closed"
+        ? ["locked", [{ kind: "sound", what: "click" }]]
+        : state == "locked"
+          ? ["closed", [{ kind: "sound", what: "click" }]]
+          : ["open", [{ kind: "refuse", why: "opened" }]];
+  }
 }
 
 /**
@@ -56,5 +72,11 @@ export function step(state: Door, e: Ev): [Door, Fx[]] {
  *   a test becomes "feed it these five events, assert on what came out".
  */
 export function run(start: Door, events: Ev[]): [Door, Fx[]] {
-  throw new Error("TODO: run");
+  let state: {s: Door, fx: Fx[]} = {s: start, fx: []}
+  events.forEach(ev => {
+    const [s, fx] = step(state.s, ev)
+    state.s = s
+    state.fx = [...state.fx, ...fx]
+  })
+  return [state.s, state.fx]
 }

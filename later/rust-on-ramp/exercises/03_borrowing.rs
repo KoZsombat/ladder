@@ -21,7 +21,11 @@
 ///   `for x in v.iter()` borrows. Here `v` is already a `&[i32]`, so a plain
 ///   `for x in v` iterates over borrowed items and `x` is an `&i32`.
 pub fn total(v: &[i32]) -> i32 {
-    todo!()
+    let mut sum = 0;
+    for i in v {
+        sum += i;
+    };
+    sum
 }
 
 /// Doubles every element in place.
@@ -33,7 +37,9 @@ pub fn total(v: &[i32]) -> i32 {
 ///   `&mut i32` and `i32`, which is the compiler telling you that a
 ///   reference is not the thing it points at.
 pub fn double_all(v: &mut Vec<i32>) {
-    todo!()
+    for num in v {
+        *num = *num * 2;
+    };
 }
 
 /// Returns the largest element, and also pushes it onto `log`.
@@ -48,8 +54,10 @@ pub fn double_all(v: &mut Vec<i32>) {
 ///
 ///   Copy the value out with `*` or `.copied()`, then push.
 pub fn max_and_log(v: &[i32], log: &mut Vec<i32>) -> Option<i32> {
-    let m = v.iter().max();
-    log.push(m);
+    let m = v.iter().max().copied();
+    if let Some(x) = m {
+        log.push(x)
+    }
     m
 }
 
@@ -65,7 +73,7 @@ pub fn max_and_log(v: &[i32], log: &mut Vec<i32>) -> Option<i32> {
 ///   at most as long as the input" — which is exactly why the caller cannot
 ///   drop the String and keep the word. Exercise 11 goes into this.
 pub fn first_word(s: &str) -> &str {
-    todo!()
+    s.split_whitespace().next().unwrap_or("")
 }
 
 #[cfg(test)]
