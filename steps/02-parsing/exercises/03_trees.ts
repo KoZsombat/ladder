@@ -21,7 +21,28 @@ export type Node =
  *   in the project is worth the effort — everything downstream gets simple.
  */
 export function evaluate(n: Node): number {
-  throw new Error("TODO: evaluate");
+  switch (n.n) {
+    case "num":
+      return n.v;
+    case "neg":
+      return evaluate(n.e) * -1;
+    case "bin": {
+      const left = evaluate(n.l);
+      const right = evaluate(n.r);
+      switch (n.op) {
+        case "*":
+          return left * right;
+        case "/":
+          return left / right;
+        case "+":
+          return left + right;
+        case "-":
+          return left - right;
+      }
+    }
+    default:
+      return 0;
+  }
 }
 
 /**
@@ -33,7 +54,19 @@ export function evaluate(n: Node): number {
  *   precedence comes out wrong you will SEE it instead of guessing.
  */
 export function show(n: Node): string {
-  throw new Error("TODO: show");
+  switch (n.n) {
+    case "num":
+      return String(n.v);
+    case "neg":
+      return `(-${show(n.e)})`;
+    case "bin": {
+      const left = show(n.l);
+      const right = show(n.r);
+      return `(${left} ${n.op} ${right})`;
+    }
+    default:
+      return "0";
+  }
 }
 
 /**
@@ -46,5 +79,17 @@ export function show(n: Node): string {
  *   walk you ever write is a variation on it.
  */
 export function depth(n: Node): number {
-  throw new Error("TODO: depth");
+  switch (n.n) {
+    case "num":
+      return 1;
+    case "neg":
+      return 1 + depth(n.e);
+    case "bin": {
+      const left = depth(n.l);
+      const right = depth(n.r);
+      return 1 + Math.max(left, right);
+    }
+    default:
+      return 0;
+  }
 }

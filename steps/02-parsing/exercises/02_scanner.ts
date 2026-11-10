@@ -12,7 +12,20 @@ export type Token =
   | { t: "sym"; v: string }
   | { t: "eof" };
 
-const SYMBOLS = ["<=", ">=", "==", "!=", "+", "-", "*", "/", "<", ">", "(", ")"];
+const SYMBOLS = [
+  "<=",
+  ">=",
+  "==",
+  "!=",
+  "+",
+  "-",
+  "*",
+  "/",
+  "<",
+  ">",
+  "(",
+  ")",
+];
 
 /**
  * TODO: implement this.
@@ -34,5 +47,47 @@ const SYMBOLS = ["<=", ">=", "==", "!=", "+", "-", "*", "/", "<", ">", "(", ")"]
  *   turns 2 ** 3 ** 2 into 64 instead of 512.
  */
 export function tokenize(src: string): Token[] {
-  throw new Error("TODO: tokenize");
+  const output: Token[] = [];
+
+  for (let index = 0; index < src.length; index++) {
+    const curr = src[index];
+    if (curr == " ") continue;
+
+    if (SYMBOLS.includes(`${curr}${src[index + 1]}`)) {
+      output.push({ t: "sym", v: `${curr}${src[index + 1]}` });
+      index++;
+      continue;
+    }
+    if (SYMBOLS.includes(curr)) {
+      output.push({ t: "sym", v: curr });
+      continue;
+    }
+    if (!isNaN(Number(curr))) {
+      let i = 0;
+      while (index + i < src.length && !isNaN(Number(src[index + i]))) {
+        i++;
+      }
+      output.push({ t: "num", v: Number(src.slice(index, index + i)) });
+      index += src.slice(index, index + i).length - 1;
+      continue;
+    }
+    const isDigit = (c: string) => c >= "0" && c <= "9";
+    const isLetter = (c: string) =>
+      (c >= "a" && c <= "z") || (c >= "A" && c <= "Z") || c === "_";
+    if (isLetter(curr)) {
+      let i = 0;
+      while (
+        index + i < src.length &&
+        (isLetter(src[index + i]) || isDigit(src[index + i]))
+      ) {
+        i++;
+      }
+      output.push({ t: "word", v: src.slice(index, index + i) });
+      index += src.slice(index, index + i).length - 1;
+      continue;
+    }
+    throw new Error(`Black ${curr} at ${index}`);
+  }
+  output.push({ t: "eof" });
+  return output;
 }

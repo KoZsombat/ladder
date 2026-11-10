@@ -15,7 +15,7 @@ test("past the end is undefined, not a throw", () => {
   const c = cursor<number>([]);
   assert.equal(c.peek(), undefined);
   assert.equal(c.next(), undefined);
-  assert.equal(c.done(), true);
+  assert.equal(c.eof(), true);
 });
 
 test("eat only advances on a match", () => {

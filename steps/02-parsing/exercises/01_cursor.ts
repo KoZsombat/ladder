@@ -13,7 +13,7 @@ export type Cursor<T> = {
   eat: (want: T) => boolean;
   /** Consume it or throw a readable error. */
   expect: (want: T) => T;
-  done: () => boolean;
+  eof: () => boolean;
   pos: () => number;
 };
 
@@ -32,7 +32,39 @@ export type Cursor<T> = {
  *   plus the position. You will read that message a hundred times.
  */
 export function cursor<T>(items: T[]): Cursor<T> {
-  throw new Error("TODO: cursor");
+  let i = 0;
+
+  return {
+    peek() {
+      return i >= items.length ? undefined : items[i];
+    },
+    next() {
+      return i >= items.length ? undefined : items[i++];
+    },
+    eat(want) {
+      if (i < items.length && want == items[i]) {
+        i++;
+        return true;
+      }
+      return false;
+    },
+    expect(want) {
+      if (want === items[i] && i < items.length) {
+        return items[i++];
+      }
+      throw new Error(
+        `expected ${String(want)} but found ${
+          i < items.length ? String(items[i]) : "end of input"
+        } at position ${i}`,
+      );
+    },
+    eof() {
+      return i + 1 >= items.length ? true : false;
+    },
+    pos() {
+      return i;
+    },
+  };
 }
 
 /**
@@ -42,5 +74,12 @@ export function cursor<T>(items: T[]): Cursor<T> {
  * a run of digits or letters.
  */
 export function takeWhile<T>(c: Cursor<T>, pred: (x: T) => boolean): T[] {
-  throw new Error("TODO: takeWhile");
+  const list = [];
+  while (!c.eof()) {
+    const peek = c.peek();
+    if (peek != undefined && pred(peek)) {
+      list.push(c.next() as T);
+    } else break;
+  }
+  return list;
 }
