@@ -21,6 +21,44 @@ export type Token =
  *   Always push { t: "eof" } at the end. It saves the parser from checking
  *   for the end of the array on every peek.
  */
+
+const OPERATORS = ["+", "-", "*", "/", "**"];
+
 export function tokenize(src: string): Token[] {
-  throw new Error("TODO: tokenize");
+  const output: Token[] = [];
+  for (let index = 0; index < src.length; index++) {
+    const curr = src[index];
+    if (curr == " ") continue;
+    if (
+      index + 1 < src.length &&
+      OPERATORS.includes(`${src[index]}${src[index + 1]}`)
+    ) {
+      output.push({ t: "op", v: "**" });
+      index++;
+      continue;
+    }
+    if (OPERATORS.includes(curr)) {
+      output.push({ t: "op", v: curr as "+" | "-" | "*" | "/" });
+      continue;
+    }
+    if (!isNaN(Number(curr))) {
+      let i = 0;
+      while (!isNaN(Number(src[index + i]))) {
+        i++;
+      }
+      output.push({ t: "num", v: Number(src.slice(index, index + i)) });
+      index += i - 1;
+      continue;
+    }
+    if (curr === "(") {
+      output.push({ t: "lparen" });
+      continue;
+    }
+    if (curr === ")") {
+      output.push({ t: "rparen" });
+      continue;
+    }
+  }
+  output.push({ t: "eof" });
+  return output;
 }

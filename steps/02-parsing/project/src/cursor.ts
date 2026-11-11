@@ -18,5 +18,20 @@ export type Cursor = {
  *   becomes legible. It is worth being able to write it from memory.
  */
 export function cursor(tokens: Token[]): Cursor {
-  throw new Error("TODO: cursor");
+  let i = 0;
+  return {
+    peek() {
+      return tokens[i];
+    },
+    next() {
+      return tokens[i++];
+    },
+    expect(t) {
+      if (tokens[i].t == t) {
+        return tokens[i++];
+      } else {
+        throw new Error("bad");
+      }
+    },
+  };
 }

@@ -40,7 +40,22 @@ const BP: Record<string, { bp: number; right: boolean }> = {
  *   Get `10 - 3 - 2` = 5 and `2 ** 3 ** 2` = 512 and you have it.
  */
 export function parseExpr(c: Cursor, minBP: number): Node {
-  throw new Error("TODO: parseExpr");
+  let left = parseAtom(c);
+
+  while (true) {
+    let token = c.peek();
+    if (token.t != "op") break;
+    const bp = BP[token.v];
+    if (bp.bp < minBP) break;
+
+    c.next();
+
+    const right = parseExpr(c, bp.right ? bp.bp : bp.bp + 1);
+
+    left = { n: "bin", op: token.v, l: left, r: right };
+  }
+
+  return left;
 }
 
 /**
@@ -55,7 +70,15 @@ export function parseExpr(c: Cursor, minBP: number): Node {
  *   - anything else throws
  */
 export function parseAtom(c: Cursor): Node {
-  throw new Error("TODO: parseAtom");
+  const token = c.next();
+  if (token.t == "num") return { n: "num", v: token.v };
+  if (token.t == "op" && token.v == "-") return { n: "neg", e: parseAtom(c) };
+  if (token.t == "lparen") {
+    const e = parseExpr(c, 0);
+    c.expect("rparen");
+    return e;
+  }
+  throw new Error("bad");
 }
 
 export function parse(src: string): Node {

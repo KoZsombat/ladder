@@ -8,7 +8,30 @@ import type { Node } from "./parser.ts";
  *   effort.
  */
 export function evaluate(n: Node): number {
-  throw new Error("TODO: evaluate");
+  switch (n.n) {
+    case "num":
+      return n.v;
+    case "neg":
+      return evaluate(n.e) * -1;
+    case "bin": {
+      const left = evaluate(n.l);
+      const right = evaluate(n.r);
+      switch (n.op) {
+        case "+":
+          return left + right;
+        case "-":
+          return left - right;
+        case "*":
+          return left * right;
+        case "/":
+          return left / right;
+        case "**":
+          return left ** right;
+      }
+    }
+    default:
+      return 0;
+  }
 }
 
 /**
@@ -20,5 +43,28 @@ export function evaluate(n: Node): number {
  *   precedence is wrong you SEE it instead of guessing.
  */
 export function show(n: Node): string {
-  throw new Error("TODO: show");
+  switch (n.n) {
+    case "num":
+      return String(n.v);
+    case "neg":
+      return `(-${show(n.e)})`;
+    case "bin": {
+      const left = show(n.l);
+      const right = show(n.r);
+      switch (n.op) {
+        case "+":
+          return `(${left} + ${right})`;
+        case "-":
+          return `(${left} - ${right})`;
+        case "*":
+          return `(${left} * ${right})`;
+        case "/":
+          return `(${left} / ${right})`;
+        case "**":
+          return `(${left} ** ${right})`;
+      }
+    }
+    default:
+      return "0";
+  }
 }
